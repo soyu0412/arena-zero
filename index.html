@@ -56,7 +56,18 @@ body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);
 #hitmark::before{transform:translate(-50%,-50%) rotate(45deg)}
 #hitmark::after{transform:translate(-50%,-50%) rotate(-45deg)}
 #hitmark.head::before,#hitmark.head::after{background:var(--accent);width:26px}
-#hitmark.on{animation:hm .28s ease-out}
+#hitmark.on{animation:hm2 .3s ease-out}
+#hitmark.kill::before,#hitmark.kill::after{background:#ff3b30;width:38px;height:3px}
+#hitmark.kill.on{animation:hm3 .55s ease-out}
+@keyframes hm2{0%{opacity:1;transform:scale(1.9)}40%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1)}}
+@keyframes hm3{0%{opacity:1;transform:scale(2.4) rotate(20deg)}30%{opacity:1;transform:scale(1) rotate(0)}100%{opacity:0;transform:scale(1.15)}}
+.dn{position:absolute;left:50%;top:50%;font:800 17px/1 system-ui,sans-serif;color:#fff;text-shadow:0 1px 3px #000,0 0 6px rgba(0,0,0,.6);pointer-events:none;animation:dn .75s ease-out forwards;z-index:3}
+.dn.head{color:#ffd24a;font-size:24px}
+.dn.kill{color:#ff5a4a;font-size:26px}
+@keyframes dn{0%{opacity:1;transform:translate(-50%,-14px) scale(1.5)}25%{transform:translate(-50%,-30px) scale(1)}100%{opacity:0;transform:translate(-50%,-70px) scale(.9)}}
+.hd{position:absolute;left:50%;top:50%;width:0;height:0;pointer-events:none;animation:hd 1s ease-out forwards;z-index:2}
+.hd i{position:absolute;left:-34px;top:-132px;width:68px;height:18px;border-radius:50%;background:radial-gradient(ellipse at center,rgba(255,60,60,.95),rgba(255,60,60,0) 70%);filter:blur(1.5px)}
+@keyframes hd{0%{opacity:1}100%{opacity:0}}
 @keyframes hm{0%{opacity:1}100%{opacity:0}}
 #dmg{position:absolute;inset:0;opacity:0;background:radial-gradient(ellipse at center,rgba(255,40,40,0) 45%,rgba(255,40,40,.55) 100%)}
 #deadmsg{position:absolute;left:50%;top:38%;transform:translateX(-50%);padding:10px 20px;background:var(--panel);border:1px solid var(--danger);border-radius:2px;font-size:18px;font-weight:600;letter-spacing:.04em;text-align:center}
@@ -884,8 +895,8 @@ var WEAPONS={
   pistol:  {name:'권총',     slot:0,dmg:22,head:2.2,mag:15,rate:0.18,reload:1.3,auto:false,spread:0.005,move:0.008,recoil:0.8,kick:0.011,snd:[0.8,1.0],desc:'가볍고 정확한 기본 권총.'},
   revolver:{name:'리볼버',   slot:0,dmg:55,head:2.1,mag:6, rate:0.6, reload:2.2,auto:false,spread:0.004,move:0.01, recoil:1.6,kick:0.03, snd:[1.2,0.75],desc:'느리지만 한 방이 묵직해요. 머리에 맞으면 즉사.'},
   mpistol: {name:'기관권총', slot:0,dmg:12,head:1.8,mag:24,rate:0.07,reload:1.6,auto:true, spread:0.014,move:0.012,recoil:0.6,kick:0.006,snd:[0.7,1.25],desc:'연사가 빠르지만 흔들림이 큰 소형 자동화기.'},
-  knife:   {name:'단검',     slot:1,kind:'melee',dmg:42,head:1.3,rate:0.38,range:2.3,speed:1.12,swingT:0.22,desc:'이동이 빨라지는 단검. 세 번이면 쓰러뜨려요.'},
-  axe:     {name:'도끼',     slot:1,kind:'melee',dmg:75,head:1.3,rate:0.8, range:2.5,speed:1.0, swingT:0.34,desc:'느리지만 두 번이면 쓰러지는 도끼.'},
+  knife:   {name:'단검',     slot:1,kind:'melee',dmg:42,head:1.3,rate:0.38,range:3.4,speed:1.12,swingT:0.22,desc:'이동이 빨라지는 단검. 세 번이면 쓰러뜨려요.'},
+  axe:     {name:'도끼',     slot:1,kind:'melee',dmg:75,head:1.3,rate:0.8, range:3.8,speed:1.0, swingT:0.34,desc:'느리지만 두 번이면 쓰러지는 도끼.'},
   ar:      {name:'돌격소총', slot:2,dmg:22,head:2.2,mag:30,rate:0.095,reload:2.1,auto:true, spread:0.004,move:0.007,heat:0.06,heatSpread:0.012,recoil:1,  kick:0.006,snd:[1,0.9],desc:'균형 잡힌 기본 소총.'},
   smg:     {name:'기관단총', slot:2,dmg:15,head:1.8,mag:35,rate:0.065,reload:1.7,auto:true, spread:0.01, move:0.006,heat:0.05,heatSpread:0.01, speed:1.06,recoil:0.7,kick:0.005,snd:[0.8,1.2],desc:'움직이며 쏘기 좋은 빠른 연사.'},
   shotgun: {name:'산탄총',   slot:2,dmg:12,head:1.5,mag:6, rate:0.85,reload:2.6,auto:false,spread:0,    move:0,    pellets:8,cone:0.045,falloff:22,recoil:2.2,kick:0.05,snd:[1.3,0.6],desc:'가까이서 쏘면 압도적, 멀수록 약해져요.'},
@@ -1295,10 +1306,39 @@ function feed(text,cls){
   while(feedEl.children.length>4) feedEl.removeChild(feedEl.firstChild);
   setTimeout(function(){if(el.parentNode) el.parentNode.removeChild(el)},4200);
 }
-function showHit(head){
+var shk={p:0,y:0,r:0,a:0};
+function dmgNum(n,head,kill){
+  var el=document.createElement('div'); el.className='dn'+(head?' head':'')+(kill?' kill':'');
+  el.textContent=n; el.style.marginLeft=((Math.random()-.5)*44|0)+'px'; el.style.marginTop=((Math.random()-.5)*16|0)+'px';
+  hudEl.appendChild(el); setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el) },800);
+}
+function showHit(head,dmg,kill){
   hitEl.className=head?'head':'';
   void hitEl.offsetWidth;
-  hitEl.className=(head?'head ':'')+'on';
+  hitEl.className=(kill?'kill ':'')+(head?'head ':'')+'on';
+  blip(head?1700:1000,0.05,0.05,'triangle'); blip(head?110:70,0.09,0.1,'sine');
+  if(dmg>0) dmgNum(Math.round(dmg),head,kill);
+}
+function killFX(head){
+  showHit(head,0,true); shk.a=Math.min(1.2,shk.a+0.25);
+  blip(520,0.12,0.07,'square'); blip(780,0.22,0.06,'triangle');
+}
+function hitSparks(p,head){
+  var col=head?0xffd24a:0xff3b30, n=head?7:4;
+  for(var i=0;i<n;i++){ var q=p.clone(); q.x+=(Math.random()-.5)*.35; q.y+=(Math.random()-.5)*.35; q.z+=(Math.random()-.5)*.35; addSpark(q,col) }
+}
+function hurtDir(pos){
+  var dx=pos.x-player.pos.x, dz=pos.z-player.pos.z; if(Math.abs(dx)+Math.abs(dz)<0.01) return;
+  var fx=-Math.sin(player.yaw), fz=-Math.cos(player.yaw), rx=Math.cos(player.yaw), rz=-Math.sin(player.yaw);
+  var ang=Math.atan2(dx*rx+dz*rz,dx*fx+dz*fz);
+  var el=document.createElement('div'); el.className='hd'; el.innerHTML='<i></i>'; el.style.transform='rotate('+ang+'rad)';
+  hudEl.appendChild(el); setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el) },1050);
+}
+function hurtFX(amt,pos){
+  player.dmgFlash=Math.min(1,player.dmgFlash+0.35+amt/120);
+  shk.a=Math.min(1.2,shk.a+0.3+amt/90);
+  blip(95,0.16,0.12,'sawtooth'); blip(190,0.08,0.06,'square');
+  if(pos) hurtDir(pos);
 }
 function updateHud(){
   chipUpdate();
@@ -1321,7 +1361,8 @@ function updateHud(){
   }
   if(hudCur!==player.cur){hudCur=player.cur;for(var si=0;si<slotEls.length;si++) slotEls[si].className=si===player.cur?'on':''}
   $('scope-btn').classList.toggle('on',!!player.zoomToggle);
-  dmgEl.style.opacity=player.dmgFlash;
+  var lowV=(player.alive&&player.hp<35)?(0.18+0.12*Math.sin(gt*7))*(1.3-player.hp/35):0;
+  dmgEl.style.opacity=Math.max(player.dmgFlash,lowV);
 }
 function esc(t){return String(t).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function renderBoard(){
@@ -1380,7 +1421,7 @@ var BCFG={
   pistol:{melee:false,dmg:[12,17],cd:[.5,1.0],see:34,reach:30,adv:[12,6],st:.8,sp:3.1,acc:[.75,.02,.15,.6],mag:10,rl:1.2,pitch:1},
   sniper:{melee:false,dmg:[55,80],cd:[1.8,2.8],see:60,reach:58,adv:[32,18],st:.5,sp:2.6,acc:[.7,.004,.35,.6],mag:5,rl:2,pitch:.55},
   shotgun:{melee:false,dmg:[26,40],cd:[1.0,1.6],see:30,reach:14,adv:[9,4],st:.7,sp:3.3,acc:[1,.065,.05,.9],mag:6,rl:1.8,pitch:.5},
-  knife:{melee:true,dmg:[28,40],cd:[.75,1.1],see:46,reach:2.4,adv:[1.7,0.2],st:.3,sp:4.4,acc:[.9,0,.9,.9],mag:99,rl:0,pitch:1}
+  knife:{melee:true,dmg:[28,40],cd:[.75,1.1],see:46,reach:3.2,adv:[1.7,0.2],st:.3,sp:4.4,acc:[.9,0,.9,.9],mag:99,rl:0,pitch:1}
 };
 BCFG.rifle=BCFG.free;
 var rule={mode:MODES[0],team:false}, loRefresh=function(){};
@@ -1440,7 +1481,7 @@ function awardKill(src,victim,head){
   if(rule.team) teamScore[src.team===0?0:1]++;
   var sn=src===player?'YOU':src.name, vn=victim===player?'YOU':victim.name;
   feed(sn+' ▸ '+vn+(head?'  (헤드샷)':''),src===player?'good':(victim===player?'bad':''));
-  if(src===player) blip(300,0.2,0.08,'sawtooth');
+  if(src===player){ blip(300,0.2,0.08,'sawtooth'); killFX(head) }
   if(rule.team){ if(teamScore[src.team===0?0:1]>=TEAM_GOAL) endMatch(src.team===player.team) }
   else if(src.kills>=GOAL) endMatch(src===player);
 }
@@ -1596,7 +1637,7 @@ mapPickRefresh();
 /* host: push new settings to everybody, re-deal teams, restart the round */
 function hostApplyCfg(){
   var ids=Object.keys(hostPlayers).map(Number).sort(function(a,b){return a-b});
-  ids.forEach(function(id,i){ hostPlayers[id].team=rule.team?(i%2):0 });
+  if(rule.team) hostShuffleTeams(); else ids.forEach(function(id){ hostPlayers[id].team=0 });
   var m={t:'cfg',map:curMap.id,mode:rule.mode.id,team:rule.team?1:0};
   bcast(m); clientHandle(m);
   if(phase!=='ended') hostNewRound();
@@ -1756,15 +1797,16 @@ function applyHit(h,def){
   var f=def.falloff?clamp(1.35-h.distance/def.falloff,0.2,1):1;
   if(rem&&rem.alive){
     sendHost({t:'hit',v:rem.id,w:def.id,z:zone,f:r2(f)});
-    showHit(zone===1);
+    showHit(zone===1,calcDamage(def,zone,f));
     blip(zone===1?1200:800,0.05,0.06,'square');
-    addSpark(h.point,0xff3b30);
+    hitSparks(h.point,zone===1);
   }else if(bot&&bot.alive){
     damageBot(bot,calcDamage(def,zone,f),zone===1);
-    addSpark(h.point,0xff3b30);
+    hitSparks(h.point,zone===1);
   }else{
     addSpark(h.point,0xffb35a);
   }
+  if(def.kind==='melee'&&((rem&&rem.alive)||(bot&&bot.alive))){ shk.a=Math.min(1.2,shk.a+0.45); blip(def.id==='axe'?90:160,0.12,0.12,'sawtooth') }
 }
 function fire(def){
   if(player.ammo<=0){startReload();return}
@@ -1796,7 +1838,7 @@ function swing(def){
   player.fireCd=def.rate; player.swing=def.swingT; muzzle.visible=false;
   blip(def.id==='axe'?150:380,0.08,0.05,'sawtooth');
   camera.updateMatrixWorld(true);
-  var targets=collectTargets(), best=null, offs=[[0,0],[0.18,0],[-0.18,0],[0,-0.15],[0,0.1]];
+  var targets=collectTargets(), best=null, offs=[[0,0],[0.18,0],[-0.18,0],[0.32,0],[-0.32,0],[0,-0.15],[0,0.1]];
   ray.far=def.range;
   for(var i=0;i<offs.length;i++){
     ndc.set(offs[i][0],offs[i][1]); ray.setFromCamera(ndc,camera);
@@ -1814,7 +1856,7 @@ function damageBot(b,amt,head,src){
   if(b.off||!b.alive) return;
   if(rule.team&&src.team===b.team) return;
   b.hp-=amt; b.flash=0.1;
-  if(src===player){showHit(head);blip(head?1200:800,0.05,0.06,'square')}
+  if(src===player){showHit(head,amt);blip(head?1200:800,0.05,0.06,'square')}
   if(b.hp<=0){
     var pal=botPal(b);
     spawnCorpse(pal.suit,pal.visor,null,b.ch,b.pos,b.group.rotation.y);
@@ -1825,8 +1867,7 @@ function damageBot(b,amt,head,src){
 function damagePlayer(amt,src){
   if(!player.alive||player.invuln>0) return;
   if(rule.team&&src.team===player.team) return;
-  player.hp-=amt; player.lastHit=gt; player.dmgFlash=Math.min(1,player.dmgFlash+0.5);
-  blip(120,0.12,0.08,'sawtooth');
+  player.hp-=amt; player.lastHit=gt; hurtFX(amt,src&&src.pos);
   if(player.hp<=0){
     player.hp=0; player.alive=false; player.deaths++; player.respawn=2.5;
     firing=false; weapon.visible=false;
@@ -2047,7 +2088,9 @@ function updatePlayer(dt){
   if(player.onGround&&hs>0.8) bobT+=dt*hs*1.6;
   var bob=player.onGround&&hs>0.8?Math.sin(bobT)*0.035:0;
   camera.position.set(player.pos.x,player.pos.y+bob,player.pos.z);
-  camera.rotation.set(player.pitch+player.recoil*0.012,player.yaw,0);
+  shk.a=Math.max(0,shk.a-dt*4.5);
+  var sa=shk.a*shk.a*0.035; shk.p=(Math.random()-.5)*sa*2; shk.y=(Math.random()-.5)*sa*2; shk.r=(Math.random()-.5)*sa*3;
+  camera.rotation.set(player.pitch+player.recoil*0.012+shk.p,player.yaw+shk.y,shk.r);
   var swp=(player.swing>0&&def.swingT)?1-player.swing/def.swingT:0;
   var e=clamp(player.equip/0.35,0,1); e=e*e;
   var rl=0, rj=0;
@@ -2152,7 +2195,7 @@ function applyRoster(m){
     if(id===myId){
       player.team=cur.team;
       if(player.alive&&prev&&cur.hp<prev.hp){
-        player.dmgFlash=Math.min(1,player.dmgFlash+0.5); player.lastHit=gt; blip(120,0.12,0.08,'sawtooth');
+        player.lastHit=gt;
       }
       player.hp=cur.hp; player.kills=cur.k; player.deaths=cur.d;
     }else{
@@ -2191,11 +2234,14 @@ function clientHandle(m){
       break;
     case 'kill':
       feed(nameOf(m.k)+' ▸ '+nameOf(m.v)+(m.h?'  (헤드샷)':''),m.k===myId?'good':(m.v===myId?'bad':''));
-      if(m.k===myId) blip(300,0.2,0.08,'sawtooth');
+      if(m.k===myId){ blip(300,0.2,0.08,'sawtooth'); killFX(!!m.h) }
       if(m.v===myId){
         player.alive=false; player.respawn=1e9; firing=false; weapon.visible=false;
         $('deadmsg').hidden=false;
       }
+      break;
+    case 'dm':
+      if(m.v===myId&&player.alive){ var ap=(m.a===myId)?null:(remotes[m.a]&&remotes[m.a].group.position); hurtFX(+m.d||0,ap) }
       break;
     case 'spawn':
       if(m.id===myId){ $('deadmsg').hidden=true; spawnPlayer(m.x,m.z,m.yaw,isFinite(+m.y)?clamp(+m.y,0,12):0); }
@@ -2229,11 +2275,27 @@ function sendRoster(){
   var m={t:'r',p:arr,ph:phase};
   bcast(m); clientHandle(m);
 }
+/* team mode: spawn beside living teammates, away from enemies; the first of a team spawns away from the enemy team */
+function pickTeamSpawn(team,selfId){
+  var mates=[], foes=[];
+  for(var k in hostPlayers){var o=hostPlayers[k]; if(!o.alive||+k===selfId) continue; (o.team===team?mates:foes).push({x:o.x,z:o.z})}
+  if(!mates.length) return pickSpawn(foes);
+  var best=SPAWNS[0], bestS=-1e9;
+  for(var i=0;i<SPAWNS.length;i++){
+    var s=SPAWNS[i], dm=1e9, de=1e9;
+    mates.forEach(function(o){dm=Math.min(dm,Math.hypot(o.x-s[0],o.z-s[1]))});
+    foes.forEach(function(o){de=Math.min(de,Math.hypot(o.x-s[0],o.z-s[1]))});
+    if(!foes.length) de=30;
+    var sc=Math.min(de,40)-dm*1.6+Math.random()*4-(de<12?40:0)-(dm<2.5?100:0);
+    if(sc>bestS){bestS=sc;best=s}
+  }
+  return best;
+}
 function hostSpawn(id){
   var p=hostPlayers[id]; if(!p) return;
   var avoid=[];
   for(var k in hostPlayers){var o=hostPlayers[k];if(o.alive&&+k!==id) avoid.push({x:o.x,z:o.z})}
-  var sp=pickSpawn(avoid);
+  var sp=rule.team?pickTeamSpawn(p.team,id):pickSpawn(avoid);
   p.hp=100; p.alive=true; p.invuln=2; p.lastHit=-99; p.x=sp[0]; p.z=sp[1];
   var m={t:'spawn',id:id,x:sp[0],z:sp[1],y:sp[2]||0,yaw:sp[3]};
   bcast(m); clientHandle(m);
@@ -2245,6 +2307,7 @@ function hostDamage(vid,aid,dmg,head){
   if(rule.team&&v.team===a.team) return;
   dmg=clamp(+dmg||0,1,200);
   v.hp-=dmg; v.lastHit=gt;
+  var dmm={t:'dm',v:vid,a:aid,d:Math.round(dmg)}; bcast(dmm); clientHandle(dmm);
   if(v.hp<=0){
     v.hp=0; v.alive=false; v.d++; a.k++; v.respawn=RESPAWN_T;
     var km={t:'kill',k:aid,v:vid,h:head?1:0};
@@ -2297,9 +2360,16 @@ function dropPlayer(id){
   feed(p.name+' 퇴장');
   sendRoster();
 }
+function hostShuffleTeams(){
+  var ids=Object.keys(hostPlayers).map(Number);
+  for(var i=ids.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=ids[i];ids[i]=ids[j];ids[j]=t}
+  var first=Math.random()<0.5?0:1;
+  ids.forEach(function(id,i){ hostPlayers[id].team=(i%2===0)?first:1-first });
+}
 function hostNewRound(){
   phase='play';
   for(var id in hostPlayers){var p=hostPlayers[id];p.k=0;p.d=0;p.alive=false;p.hp=0}
+  if(rule.team){ hostShuffleTeams(); sendRoster(); }
   var m={t:'round'};
   bcast(m); clientHandle(m);
   for(var id2 in hostPlayers){ if(hostPlayers[id2].spawned) hostSpawn(+id2); }
@@ -2684,7 +2754,7 @@ window.addEventListener('wheel',function(e){
 var AIM_ASSIST_IDLE=0.6, AIM_ASSIST_FIRE=1.6;
 function aimAssist(dt,def){
   if(!touchUI||!player.alive) return;
-  var best=null, cp=player.pos, maxDist=def.kind==='melee'?4.5:60;
+  var best=null, cp=player.pos, maxDist=def.kind==='melee'?6:60;
   function consider(x,y,z){
     var dx=x-cp.x, dy=y-cp.y, dz=z-cp.z, hd=Math.hypot(dx,dz), dist=Math.hypot(hd,dy);
     if(dist<1||dist>maxDist) return;
