@@ -1342,17 +1342,20 @@ var online=false, isHost=false, noNet=false;
 var DEFAULT_SUB='봇과 연습하거나, 방을 만들어 친구와 온라인으로 대전하세요. 먼저 킬 목표를 채우면 승리합니다.';
 var homeBox=$('home-box'), pauseBox=$('pause-box'), roomInfo=$('room-info'), statusEl=$('net-status'), nameEl=$('name'), codeEl=$('code');
 
+/* start / settings / online (create room, join) buttons belong to the main menu only; hide them in the room screen */
+var lobbyEls=[startBtn,$('set-home'),menu.querySelector('.divider'),$('host').parentNode];
+function setLobby(show){ lobbyEls.forEach(function(e){ if(e) e.hidden=!show }) }
 function setStatus(msg,bad){ statusEl.hidden=!msg; statusEl.textContent=msg||''; statusEl.className='status'+(bad?' bad':''); }
 function showHome(title,sub){
   menuTitle.textContent=title||'Arena Zero';
   menuSub.textContent=sub||DEFAULT_SUB;
-  homeBox.hidden=false; pauseBox.hidden=true; menu.hidden=false; mountLoadout(true);
+  homeBox.hidden=false; pauseBox.hidden=true; setLobby(true); menu.hidden=false; mountLoadout(true);
 }
 function showPause(title,sub,btn){
   menuTitle.textContent=title; menuSub.textContent=sub;
   $('resume').textContent=btn||'계속하기';
   $('leave').textContent=online?'방 나가기':'메인으로';
-  homeBox.hidden=true; pauseBox.hidden=false; roomInfo.hidden=!online; menu.hidden=false; mountLoadout(false);
+  homeBox.hidden=true; pauseBox.hidden=false; setLobby(false); roomInfo.hidden=!online; menu.hidden=false; mountLoadout(false);
 }
 function myName(){
   var n=(nameEl.value||'').trim().slice(0,12);
