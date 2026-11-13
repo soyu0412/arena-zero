@@ -1143,6 +1143,7 @@ function animChars(dt){
     if(c.lx===null){c.lx=p.x;c.lz=p.z;c.ly=p.y}
     var d=Math.min(Math.hypot(p.x-c.lx,p.z-c.lz),1), vy=(p.y-c.ly)/dt; c.lx=p.x; c.lz=p.z; c.ly=p.y;
     var sp=Math.min(d/dt,9), I=c.in;
+    if(Math.abs(vy)<1.1&&sp>1.2){ c.sd=(c.sd||0)+d; if(c.sd>2.3){ c.sd=0; stepAt(p) } } else if(Math.abs(vy)>=1.1) c.sd=1.6;
     if(I.fire){c.kickT-=dt; if(c.kickT<=0){c.kick=1;c.kickT=0.11}} else c.kickT=0;
     c.hold=!!I.hold; poseChar(c,dt,sp,Math.abs(vy)>1.1,I.rl,I.melee,I.pitch);
   }
@@ -1261,6 +1262,32 @@ function blip(freq,dur,vol,type){
     g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+dur);
     o.connect(g); g.connect(masterGain||actx.destination); o.start(); o.stop(actx.currentTime+dur);
   }catch(e){}
+}
+
+/* ---------- footsteps ---------- */
+var stepAcc=0, wasAir=false, fallV=0;
+function footstep(vol,pan,run){
+  if(!actx||muted||!noiseBuf||vol<0.008) return;
+  try{
+    var t=actx.currentTime, dest=masterGain||actx.destination, out=dest;
+    if(actx.createStereoPanner){ var pn=actx.createStereoPanner(); pn.pan.value=Math.max(-1,Math.min(1,pan||0)); pn.connect(dest); out=pn }
+    var s=actx.createBufferSource(); s.buffer=noiseBuf; s.playbackRate.value=0.5+Math.random()*0.25;
+    var f=actx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=(run?950:650)+Math.random()*220;
+    var g=actx.createGain(); g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.1);
+    s.connect(f); f.connect(g); g.connect(out); s.start(t); s.stop(t+0.11);
+    var o=actx.createOscillator(), og=actx.createGain(); o.type='sine';
+    o.frequency.setValueAtTime(100+Math.random()*20,t); o.frequency.exponentialRampToValueAtTime(48,t+0.07);
+    og.gain.setValueAtTime(vol*0.55,t); og.gain.exponentialRampToValueAtTime(0.0001,t+0.09);
+    o.connect(og); og.connect(out); o.start(t); o.stop(t+0.1);
+  }catch(e){}
+}
+// somebody else's footstep: louder when close, panned left/right, fades out by ~30m
+function stepAt(p){
+  if(!running||paused) return;
+  var dx=p.x-camera.position.x, dz=p.z-camera.position.z, dy=p.y-(camera.position.y-EYE);
+  var dist=Math.hypot(dx,dz)+Math.abs(dy)*1.5; if(dist>30) return;
+  var rx=Math.cos(player.yaw), rz=-Math.sin(player.yaw), pan=dist>0.5?(dx*rx+dz*rz)/dist:0;
+  footstep(0.26*Math.pow(1-dist/30,1.6),pan,true);
 }
 
 /* ---------- effects ---------- */
@@ -2086,6 +2113,11 @@ function updatePlayer(dt){
 
   var hs=Math.hypot(player.vel.x,player.vel.z);
   if(player.onGround&&hs>0.8) bobT+=dt*hs*1.6;
+  if(!player.onGround){ wasAir=true; stepAcc=1.6; fallV=Math.min(fallV,player.vel.y) }
+  else{
+    if(wasAir){ wasAir=false; if(fallV<-4) footstep(Math.min(0.42,0.12-fallV*0.03),0,true); fallV=0; stepAcc=0 }
+    if(hs>0.8){ stepAcc+=hs*dt; if(stepAcc>2.3){ stepAcc=0; footstep(hs>5?0.2:0.14,0,hs>5) } }
+  }
   var bob=player.onGround&&hs>0.8?Math.sin(bobT)*0.035:0;
   camera.position.set(player.pos.x,player.pos.y+bob,player.pos.z);
   shk.a=Math.max(0,shk.a-dt*4.5);
