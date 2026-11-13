@@ -1520,39 +1520,56 @@ function mapPickRefresh(){
 }
 mapPickRefresh();
 
-/* quick map/mode picker next to the online buttons: same state as the main pickers, so rooms are created with these settings */
+/* in-room map/mode picker: the host changes map, mode and solo/team here; everyone gets the new settings and a new round starts */
 (function(){
-  var hostBtn=$('host'); if(!hostBtn||!hostBtn.parentNode) return;
-  var box=document.createElement('div'); box.className='mp'; box.id='on-pick'; box.style.marginBottom='4px';
-  box.innerHTML='<span class="label">방 설정 \u00b7 맵</span><div class="md-grid" id="on-maps"></div><span class="label">모드</span><div class="md-grid" id="on-modes"></div><div class="md-team" id="on-team"><button type="button" class="chip t0" data-t="0">개인전</button><button type="button" class="chip t1" data-t="1">팀전</button></div>';
-  hostBtn.parentNode.insertBefore(box,hostBtn);
-  var oMaps=box.querySelector('#on-maps'), oModes=box.querySelector('#on-modes'), mB={}, dB={};
+  var anchor=$('map-now'); if(!anchor||!anchor.parentNode) return;
+  var box=document.createElement('div'); box.className='mp'; box.id='room-pick'; box.hidden=true; box.style.margin='4px 0 14px';
+  box.innerHTML='<span class="label">맵</span><div class="md-grid" id="rp-maps"></div><span class="label">모드</span><div class="md-grid" id="rp-modes"></div><div class="md-team" id="rp-team"><button type="button" class="chip t0" data-t="0">개인전</button><button type="button" class="chip t1" data-t="1">팀전</button></div><p class="lo-desc" id="rp-note"></p>';
+  anchor.parentNode.insertBefore(box,anchor.nextSibling);
+  var oMaps=box.querySelector('#rp-maps'), oModes=box.querySelector('#rp-modes'), note=box.querySelector('#rp-note'), mB={}, dB={};
+  function sig(){return (curMap?curMap.id:'')+'|'+rule.mode.id+'|'+(rule.team?1:0)}
+  function change(fn){
+    if(online&&!isHost) return;
+    var before=sig(); fn();
+    if(online&&isHost&&sig()!==before) hostApplyCfg();
+    blip(640,0.03,0.03,'square');
+  }
   MAPS.forEach(function(m){
     var b=document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=m.name; mB[m.id]=b;
-    b.addEventListener('click',function(){ if(online&&!isHost) return; loadMap(m.id); blip(640,0.03,0.03,'square') });
+    b.addEventListener('click',function(){ change(function(){ loadMap(m.id) }) });
     oMaps.appendChild(b);
   });
   MODES.forEach(function(m){
     var b=document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=m.name; dB[m.id]=b;
-    b.addEventListener('click',function(){ if(online&&!isHost) return; setRule(m.id,rule.team); blip(640,0.03,0.03,'square') });
+    b.addEventListener('click',function(){ change(function(){ setRule(m.id,rule.team,true) }) });
     oModes.appendChild(b);
   });
-  var tB=box.querySelectorAll('#on-team .chip');
+  var tB=box.querySelectorAll('#rp-team .chip');
   Array.prototype.forEach.call(tB,function(b){
-    b.addEventListener('click',function(){ if(online&&!isHost) return; setRule(rule.mode.id,b.getAttribute('data-t')==='1'); blip(640,0.03,0.03,'square') });
+    b.addEventListener('click',function(){ change(function(){ setRule(rule.mode.id,b.getAttribute('data-t')==='1',true) }) });
   });
   function sync(){
     if(curMap) for(var id in mB) mB[id].classList.toggle('on',id===curMap.id);
     for(var k in dB) dB[k].classList.toggle('on',k===rule.mode.id);
     Array.prototype.forEach.call(tB,function(b){b.classList.toggle('on',(b.getAttribute('data-t')==='1')===rule.team)});
+    var lock=online&&!isHost;
+    box.classList.toggle('md-locked',lock);
+    note.textContent=lock?'방장만 맵과 모드를 바꿀 수 있어요.':(online?'바꾸면 모두에게 적용되고 새 라운드가 시작돼요.':'');
   }
+  function vis(){ box.hidden=!(online&&!homeBox.hidden===false); sync() }
   var _mr=mapPickRefresh; mapPickRefresh=function(){ _mr(); sync() };
   var _rr=ruleRefresh; ruleRefresh=function(){ _rr(); sync() };
-  sync();
-  // only show while the main menu is up (hidden in the in-room pause screen)
-  function vis(){ box.hidden=!!homeBox.hidden }
   vis(); try{ new MutationObserver(vis).observe(homeBox,{attributes:true,attributeFilter:['hidden']}) }catch(e){}
 })();
+
+/* host: push new settings to everybody, re-deal teams, restart the round */
+function hostApplyCfg(){
+  var ids=Object.keys(hostPlayers).map(Number).sort(function(a,b){return a-b});
+  ids.forEach(function(id,i){ hostPlayers[id].team=rule.team?(i%2):0 });
+  var m={t:'cfg',map:curMap.id,mode:rule.mode.id,team:rule.team?1:0};
+  bcast(m); clientHandle(m);
+  hostNewRound();
+}
 
 function beginGame(){
   online=false; ended=false; running=true; paused=false; gt=0;
@@ -2155,6 +2172,10 @@ function clientHandle(m){
     case 'end':
       phase='ended'; firing=false;
       showBanner((m.tm===0||m.tm===1)?((m.tm===player.team?'우리 팀 승리! ':TEAM_PAL[m.tm].name+' 팀 승리. ')+'잠시 뒤 새 라운드가 시작됩니다'):(m.w===myId?'승리! 잠시 뒤 새 라운드가 시작됩니다':nameOf(m.w)+' 승리. 잠시 뒤 새 라운드가 시작됩니다'));
+      break;
+    case 'cfg':
+      if(typeof m.map==='string') loadMap(m.map.slice(0,16));
+      if(typeof m.mode==='string') setRule(m.mode.slice(0,12),!!m.team,true);
       break;
     case 'round':
       phase='play'; $('banner').hidden=true; feed('새 라운드 시작');
