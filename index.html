@@ -1554,11 +1554,42 @@ mapPickRefresh();
     Array.prototype.forEach.call(tB,function(b){b.classList.toggle('on',(b.getAttribute('data-t')==='1')===rule.team)});
     var lock=online&&!isHost;
     box.classList.toggle('md-locked',lock);
+    if(online&&phase==='ended'){ note.textContent=lock?'방장만 맵과 모드를 바꿀 수 있어요.':'바꾼 설정은 다음 라운드부터 적용돼요.'; return }
     note.textContent=lock?'방장만 맵과 모드를 바꿀 수 있어요.':(online?'바꾸면 모두에게 적용되고 새 라운드가 시작돼요.':'');
   }
   function vis(){ box.hidden=!(online&&!homeBox.hidden===false); sync() }
   var _mr=mapPickRefresh; mapPickRefresh=function(){ _mr(); sync() };
   var _rr=ruleRefresh; ruleRefresh=function(){ _rr(); sync() };
+  /* between rounds: open the room screen for ROUND_PAUSE seconds so the host can pick the next map/mode, then the new round starts */
+  var wasEnded=false, endAt=0, BREAK_TITLE='라운드 종료';
+  function endTick(){
+    var inBreak=online&&phase==='ended';
+    if(inBreak&&!wasEnded){
+      wasEnded=true; endAt=Date.now()+ROUND_PAUSE*1000;
+      firing=false; rmb=false;
+      try{document.exitPointerLock()}catch(e){}
+      paused=true; keys={};
+      boardEl.hidden=true; $('banner').hidden=true;
+      showPause(BREAK_TITLE,'','다음 라운드 준비');
+    }
+    if(inBreak){
+      var s=Math.max(0,Math.ceil((endAt-Date.now())/1000));
+      if(!menu.hidden){
+        if(menuTitle.textContent!==BREAK_TITLE) menuTitle.textContent=BREAK_TITLE;
+        menuSub.textContent=s+'초 뒤 새 라운드가 시작돼요. '+(isHost?'지금 맵과 모드를 고를 수 있어요.':'방장이 맵과 모드를 고르는 중이에요.');
+      }
+    }
+    if(!inBreak&&wasEnded){
+      wasEnded=false;
+      if(online&&paused&&!menu.hidden&&menuTitle.textContent===BREAK_TITLE){
+        paused=false; menu.hidden=true;
+        if(!readySent){readySent=true;sendHost({t:'ready'})}
+        try{requestLock()}catch(e){}
+      }
+    }
+    sync();
+  }
+  setInterval(endTick,250);
   vis(); try{ new MutationObserver(vis).observe(homeBox,{attributes:true,attributeFilter:['hidden']}) }catch(e){}
 })();
 
@@ -1568,7 +1599,7 @@ function hostApplyCfg(){
   ids.forEach(function(id,i){ hostPlayers[id].team=rule.team?(i%2):0 });
   var m={t:'cfg',map:curMap.id,mode:rule.mode.id,team:rule.team?1:0};
   bcast(m); clientHandle(m);
-  hostNewRound();
+  if(phase!=='ended') hostNewRound();
 }
 
 function beginGame(){
@@ -2057,7 +2088,7 @@ function updatePlayer(dt){
 }
 
 /* ---------- online: WebRTC via PeerJS. The room creator relays messages and referees damage. ---------- */
-var GOAL_ONLINE=10, MAX_PLAYERS=6, NET_DT=0.05, ROSTER_DT=0.25, PREFIX='arenazero-', RESPAWN_T=3, ROUND_PAUSE=7, TIMEOUT_MS=12000, IDLE_DROP=20;
+var GOAL_ONLINE=10, MAX_PLAYERS=6, NET_DT=0.05, ROSTER_DT=0.25, PREFIX='arenazero-', RESPAWN_T=3, ROUND_PAUSE=15, TIMEOUT_MS=12000, IDLE_DROP=20;
 var session=0, peer=null, hostConn=null, conns={}, nextId=1, myId=0, roomCode='';
 var roster={}, remotes={}, hostPlayers={}, phase='play', phaseT=0;
 var netAcc=0, rosterAcc=0, rosterDirty=false, readySent=false, connecting=false;
