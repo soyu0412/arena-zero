@@ -1517,6 +1517,40 @@ function mapPickRefresh(){
 }
 mapPickRefresh();
 
+/* quick map/mode picker next to the online buttons: same state as the main pickers, so rooms are created with these settings */
+(function(){
+  var hostBtn=$('host'); if(!hostBtn||!hostBtn.parentNode) return;
+  var box=document.createElement('div'); box.className='mp'; box.id='on-pick'; box.style.marginBottom='4px';
+  box.innerHTML='<span class="label">방 설정 \u00b7 맵</span><div class="md-grid" id="on-maps"></div><span class="label">모드</span><div class="md-grid" id="on-modes"></div><div class="md-team" id="on-team"><button type="button" class="chip t0" data-t="0">개인전</button><button type="button" class="chip t1" data-t="1">팀전</button></div>';
+  hostBtn.parentNode.insertBefore(box,hostBtn);
+  var oMaps=box.querySelector('#on-maps'), oModes=box.querySelector('#on-modes'), mB={}, dB={};
+  MAPS.forEach(function(m){
+    var b=document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=m.name; mB[m.id]=b;
+    b.addEventListener('click',function(){ if(online&&!isHost) return; loadMap(m.id); blip(640,0.03,0.03,'square') });
+    oMaps.appendChild(b);
+  });
+  MODES.forEach(function(m){
+    var b=document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=m.name; dB[m.id]=b;
+    b.addEventListener('click',function(){ if(online&&!isHost) return; setRule(m.id,rule.team); blip(640,0.03,0.03,'square') });
+    oModes.appendChild(b);
+  });
+  var tB=box.querySelectorAll('#on-team .chip');
+  Array.prototype.forEach.call(tB,function(b){
+    b.addEventListener('click',function(){ if(online&&!isHost) return; setRule(rule.mode.id,b.getAttribute('data-t')==='1'); blip(640,0.03,0.03,'square') });
+  });
+  function sync(){
+    if(curMap) for(var id in mB) mB[id].classList.toggle('on',id===curMap.id);
+    for(var k in dB) dB[k].classList.toggle('on',k===rule.mode.id);
+    Array.prototype.forEach.call(tB,function(b){b.classList.toggle('on',(b.getAttribute('data-t')==='1')===rule.team)});
+  }
+  var _mr=mapPickRefresh; mapPickRefresh=function(){ _mr(); sync() };
+  var _rr=ruleRefresh; ruleRefresh=function(){ _rr(); sync() };
+  sync();
+  // only show while the main menu is up (hidden in the in-room pause screen)
+  function vis(){ box.hidden=!!homeBox.hidden }
+  vis(); try{ new MutationObserver(vis).observe(homeBox,{attributes:true,attributeFilter:['hidden']}) }catch(e){}
+})();
+
 function beginGame(){
   online=false; ended=false; running=true; paused=false; gt=0;
   $('botslabel').textContent='생존 봇';
